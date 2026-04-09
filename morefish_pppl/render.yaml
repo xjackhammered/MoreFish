@@ -1,12 +1,10 @@
-# render.yaml
 services:
-  # --------------------------------------------------------------------------
   # Django Web Service (Gunicorn)
-  # --------------------------------------------------------------------------
   - type: web
     name: morefish-api
     runtime: python
     region: oregon
+    repo: https://github.com/xjackhammered/MoreFish
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -42,16 +40,14 @@ services:
         value: ""
       - key: EMAIL_HOST_PASSWORD
         value: ""
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: /etc/secrets/server_key.json
+      # Note: GOOGLE_APPLICATION_CREDENTIALS will need to be set manually via secret files
 
-  # --------------------------------------------------------------------------
-  # Celery Worker (background tasks)
-  # --------------------------------------------------------------------------
+  # Celery Worker
   - type: worker
     name: morefish-celery
     runtime: python
     region: oregon
+    repo: https://github.com/xjackhammered/MoreFish
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -79,16 +75,13 @@ services:
         value: Asia/Dhaka
       - key: USE_TZ
         value: "False"
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: /etc/secrets/server_key.json
 
-  # --------------------------------------------------------------------------
-  # Celery Beat (periodic task scheduler)
-  # --------------------------------------------------------------------------
+  # Celery Beat
   - type: worker
     name: morefish-beat
     runtime: python
     region: oregon
+    repo: https://github.com/xjackhammered/MoreFish
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -117,13 +110,12 @@ services:
       - key: USE_TZ
         value: "False"
 
-  # --------------------------------------------------------------------------
   # Fish Farm MQTT Listener
-  # --------------------------------------------------------------------------
   - type: worker
     name: morefish-mqtt-fish
     runtime: python
     region: oregon
+    repo: https://github.com/xjackhammered/MoreFish
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -147,13 +139,12 @@ services:
       - key: USE_TZ
         value: "False"
 
-  # --------------------------------------------------------------------------
   # Poultry MQTT Listener
-  # --------------------------------------------------------------------------
   - type: worker
     name: morefish-mqtt-poultry
     runtime: python
     region: oregon
+    repo: https://github.com/xjackhammered/MoreFish
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
@@ -177,9 +168,6 @@ services:
       - key: USE_TZ
         value: "False"
 
-# ----------------------------------------------------------------------------
-# Databases
-# ----------------------------------------------------------------------------
 databases:
   - name: morefish-db
     databaseName: morefish
@@ -187,6 +175,5 @@ databases:
     region: oregon
 
   - name: morefish-redis
-    type: redis
     plan: free
     region: oregon
