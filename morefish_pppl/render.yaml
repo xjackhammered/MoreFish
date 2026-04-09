@@ -1,0 +1,192 @@
+# render.yaml
+services:
+  # --------------------------------------------------------------------------
+  # Django Web Service (Gunicorn)
+  # --------------------------------------------------------------------------
+  - type: web
+    name: morefish-api
+    runtime: python
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn morefish_pppl.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morefish-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: TIME_ZONE
+        value: Asia/Dhaka
+      - key: USE_TZ
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/server_key.json
+
+  # --------------------------------------------------------------------------
+  # Celery Worker (background tasks)
+  # --------------------------------------------------------------------------
+  - type: worker
+    name: morefish-celery
+    runtime: python
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: celery -A morefish_pppl worker -l info
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morefish-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: TIME_ZONE
+        value: Asia/Dhaka
+      - key: USE_TZ
+        value: "False"
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/server_key.json
+
+  # --------------------------------------------------------------------------
+  # Celery Beat (periodic task scheduler)
+  # --------------------------------------------------------------------------
+  - type: worker
+    name: morefish-beat
+    runtime: python
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: celery -A morefish_pppl beat -l info
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morefish-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: TIME_ZONE
+        value: Asia/Dhaka
+      - key: USE_TZ
+        value: "False"
+
+  # --------------------------------------------------------------------------
+  # Fish Farm MQTT Listener
+  # --------------------------------------------------------------------------
+  - type: worker
+    name: morefish-mqtt-fish
+    runtime: python
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python raw_data_insertion.py
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morefish-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: TIME_ZONE
+        value: Asia/Dhaka
+      - key: USE_TZ
+        value: "False"
+
+  # --------------------------------------------------------------------------
+  # Poultry MQTT Listener
+  # --------------------------------------------------------------------------
+  - type: worker
+    name: morefish-mqtt-poultry
+    runtime: python
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python poultry_mqtt.py
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morefish-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: morefish-redis
+          type: redis
+          property: connectionString
+      - key: TIME_ZONE
+        value: Asia/Dhaka
+      - key: USE_TZ
+        value: "False"
+
+# ----------------------------------------------------------------------------
+# Databases
+# ----------------------------------------------------------------------------
+databases:
+  - name: morefish-db
+    databaseName: morefish
+    plan: free
+    region: oregon
+
+  - name: morefish-redis
+    type: redis
+    plan: free
+    region: oregon
