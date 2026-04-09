@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}My Admin Site{% endblock %}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Custom styles here, if needed */
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="bg-light sidebar">
+        <div class="sidebar-sticky">
+            <h3>My Admin</h3>
+            <ul class="nav flex-column">
+                <!-- Replace the links with your app-specific URLs -->
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/dashboard/">Dashboard</a>
+                </li>
+                <!-- Add more links for your models, if applicable -->
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main role="main" class="main-content">
+        <div class="container-fluid">
+            {% block content %}
+            <!-- Page content goes here -->
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Optional JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

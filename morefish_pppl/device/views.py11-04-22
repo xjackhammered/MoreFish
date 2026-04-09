@@ -1,0 +1,603 @@
+import sys
+import time
+from datetime import datetime, timedelta
+
+import requests as requests
+from django.shortcuts import render
+# Create your views here.
+from pytz import timezone
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import device.publisher as publisher
+from assets.serializers import AssetsSerializer
+from assets.models import AssetsProperties, AssetsFiles
+from device.helper import pond_wise_devices_daily_data, pond_wise_devices_weekly_data, pond_wise_devices_monthly_data, \
+    pond_wise_devices_yearly_data, pond_wise_devices_sensors_daily_data, pond_wise_devices_sensors_weekly_data, \
+    pond_wise_devices_sensor_monthly_data, pond_wise_devices_sensor_yearly_data
+from device.models import DeviceGateway, Device, DeviceData, DeviceControlInfo, Camera
+from device.serializers import DeviceSerializer, DeviceDataSerializer, AssetsCameraSerializer
+from django.db.models import Avg
+import paho.mqtt.client as mqtt
+from helper import unique
+from notification.models import Notifications
+from users.models import Phone, User
+
+
+def is_admin(user):
+    return user.groups.filter(name='admin').exists()
+
+class AssetsListWithData(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            pk = request.data.get('user_id')
+            florida = timezone('Asia/Dhaka')
+            florida_time = datetime.now(florida)
+            time_stamp = florida_time.strftime('%Y-%m-%d %H:%M:%S')
+            yesterday = datetime.today() - timedelta(days=1)
+            before_date = yesterday.strftime('%Y-%m-%d %H:%M:%S')
+            asset_data = []
+            if request.user.is_superuser:
+                assets_info = AssetsProperties.ast_user.through.objects.values('assetsproperties_id').distinct()
+
+                for assets_data in assets_info:
+                    ast_info = AssetsProperties.ast_user.through.objects.filter(
+                        assetsproperties_id=assets_data['assetsproperties_id']).first()
+                    assets_information = AssetsProperties.objects.filter(id=assets_data['assetsproperties_id']).first()
+                    if ast_info:
+                        user_id = ast_info.user_id
+                    else:
+                        user_id = None
+                    ph_data = 0.00
+                    tds_data = 0.00
+                    temp_data = 0.00
+                    total_device = 0
+
+                    if user_id != None:
+                        woner_name = ast_info.user.first_name + ' ' + ast_info.user.last_name
+                    else:
+                        woner_name = ''
+                    phone_info = Phone.objects.values('phn_cell').filter(user=user_id).first()
+
+                    if phone_info:
+                        cell_phone = phone_info['phn_cell']
+                    else:
+                        cell_phone = ''
+                    recieved_data = []
+                    device_list = Device.objects.filter(dev_assets=assets_data['assetsproperties_id'], dev_type=1)
+                    last_notification = Notifications.objects.values('not_message_body').filter(
+                        not_assets=assets_data['assetsproperties_id']).order_by('-id')[:1]
+                    if last_notification:
+                        last_not = last_notification[0]['not_message_body']
+                    else:
+                        last_not = ''
+                    total_device = len(device_list)
+                    for device_data in device_list:
+                        devices_data = DeviceData.objects.filter(dvd_dev=device_data.id).order_by('-id')[:1]
+                        for devices_datas in devices_data:
+                            created_time = devices_datas.dvd_created_at
+                            data_time = created_time.strftime('%d %b, %Y %I:%M %p')
+                            all_datas = {'ph': devices_datas.dvd_ph, 'tds': devices_datas.dvd_tds,
+                                         'temp': devices_datas.dvd_temp, 'time': data_time}
+                            recieved_data.append(all_datas)
+                    for divdata in recieved_data:
+                        ph_data_value = float(divdata['ph'])
+                        ph_data += ph_data_value
+                        tds_data_value = float(divdata['tds'])
+                        tds_data += tds_data_value
+                        temp_data_value = float(divdata['temp'])
+                        temp_data += temp_data_value
+                        data_entry_time = divdata['time']
+                    row_length = len(recieved_data)
+                    actual_ph_for_24 = 0
+                    actual_tds_for_24 = 0
+                    actual_temp_for_24 = 0
+                    actual_time = 0
+                    if row_length > 0:
+                        actual_ph_for_24 = round(ph_data / row_length, 1)
+                        actual_tds_for_24 = int(tds_data / row_length)
+                        actual_temp_for_24 = int(temp_data / row_length)
+                        actual_time = data_entry_time
+                        # print(actual_ph_for_24, actual_tds_for_24, actual_temp_for_24)
+
+                    asset_information = {'total_device': total_device, 'id': assets_data['assetsproperties_id'],
+                                         'owner_name': woner_name, 'phone': cell_phone,
+                                         'comments': last_not, 'name': assets_information.ast_name,
+                                         'ast_address': assets_information.ast_address, 'ph': actual_ph_for_24,
+                                         'tds': actual_tds_for_24, 'temp': actual_temp_for_24,
+                                         'min_ph': assets_information.ast_min_ph,
+                                         'max_ph': assets_information.ast_max_ph,
+                                         'min_temp': assets_information.ast_min_temp,
+                                         'max_temp': assets_information.ast_max_temp,
+                                         'min_tds': assets_information.ast_min_tds,
+                                         'max_tds': assets_information.ast_max_tds, 'date_time': actual_time}
+                    asset_data.append(asset_information)
+            else:
+                assets_info = AssetsProperties.ast_user.through.objects.filter(user_id=pk)
+                for assets_data in assets_info:
+                    ph_data = 0.00
+                    tds_data = 0.00
+                    temp_data = 0.00
+                    if assets_data.user_id != None:
+                        woner_name = assets_data.user.first_name + ' ' + assets_data.user.last_name
+                    else:
+                        woner_name = ''
+                    phone_info = Phone.objects.values('phn_cell').filter(user=assets_data.user_id).first()
+                    if phone_info:
+                        cell_phone = phone_info['phn_cell']
+                    else:
+                        cell_phone = ''
+                    recieved_data = []
+                    device_list = Device.objects.filter(dev_assets=assets_data.assetsproperties_id, dev_type=1)
+                    for device_data in device_list:
+                        devices_data = DeviceData.objects.filter(dvd_dev=device_data.id).order_by('-id')[:1]
+                        for devices_datas in devices_data:
+                            created_time = devices_datas.dvd_created_at
+                            data_time = created_time.strftime('%d %b, %Y %I:%M %p')
+                            all_datas = {'ph': devices_datas.dvd_ph, 'tds': devices_datas.dvd_tds,
+                                         'temp': devices_datas.dvd_temp, 'time': data_time}
+                            recieved_data.append(all_datas)
+                    for divdata in recieved_data:
+                        ph_data_value = float(divdata['ph'])
+                        ph_data += ph_data_value
+                        tds_data_value = float(divdata['tds'])
+                        tds_data += tds_data_value
+                        temp_data_value = float(divdata['temp'])
+                        temp_data += temp_data_value
+                        data_entry_time = divdata['time']
+                    row_length = len(recieved_data)
+                    actual_ph_for_24 = 0
+                    actual_tds_for_24 = 0
+                    actual_temp_for_24 = 0
+                    actual_time = 0
+                    if row_length > 0:
+                        actual_ph_for_24 = round(ph_data / row_length, 1)
+                        actual_tds_for_24 = int(tds_data / row_length)
+                        actual_temp_for_24 = int(temp_data / row_length)
+                        actual_time = data_entry_time
+                        # print(actual_ph_for_24, actual_tds_for_24, actual_temp_for_24)
+
+                    asset_information = {'id': assets_data.assetsproperties_id, 'owner_name': woner_name, 'phone': cell_phone,
+                                         'comments': assets_data.assetsproperties.ast_comments, 'name': assets_data.assetsproperties.ast_name,
+                                         'ast_address': assets_data.assetsproperties.ast_address, 'ph': actual_ph_for_24,
+                                         'tds': actual_tds_for_24, 'temp': actual_temp_for_24,
+                                         'min_ph': assets_data.assetsproperties.ast_min_ph, 'max_ph': assets_data.assetsproperties.ast_max_ph,
+                                         'min_temp': assets_data.assetsproperties.ast_min_temp, 'max_temp': assets_data.assetsproperties.ast_max_temp,
+                                         'min_tds': assets_data.assetsproperties.ast_min_tds, 'max_tds': assets_data.assetsproperties.ast_max_tds,
+                                         'date_time': actual_time}
+                    asset_data.append(asset_information)
+
+            # print(asset_data)
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Assets list',
+                'data': asset_data
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+            return Response(response, status=status.HTTP_201_CREATED)
+
+
+class MachineList(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            pk = request.data.get('asset_id')
+            florida = timezone('Asia/Dhaka')
+            florida_time = datetime.now(florida)
+            time_stamp = florida_time.strftime('%Y-%m-%d %H:%M:%S')
+            yesterday = datetime.today() - timedelta(days=1)
+            before_date = yesterday.strftime('%Y-%m-%d %H:%M:%S')
+            recieved_data = []
+
+            device_list = Device.objects.filter(dev_assets=pk, dev_type=2)
+            total_device = len(device_list)
+            for device_data in device_list:
+                devices_data = DeviceControlInfo.objects.filter(dci_dev=device_data.id).order_by('-id')[:1]
+                if devices_data:
+                    created_time = devices_data[0].dci_created_at
+                    name = devices_data[0].dci_dev.dev_name
+                    data = devices_data[0].dci_data
+                    dev_id = devices_data[0].dci_dev_id
+                    data_time = created_time.strftime('%d/%m/%Y %I:%M %p')
+                else:
+                    created_time = ''
+                    name = device_data.dev_name
+                    data = 'OFF'
+                    dev_id = device_data.id
+                    data_time = ''
+                all_datas = {'device_name': name, 'data': data, 'device_id': dev_id, 'time': data_time}
+                recieved_data.append(all_datas)
+            asset_information = {'total_device': total_device, 'device_info': recieved_data}
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Assets list for device control',
+                'data': asset_information
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+            return Response(response, status=status.HTTP_201_CREATED)
+
+class DeviceListWithData(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        try:
+            pk = request.data.get('asset_id')
+            florida = timezone('Asia/Dhaka')
+            florida_time = datetime.now(florida)
+            time_stamp = florida_time.strftime('%Y-%m-%d %H:%M:%S')
+            yesterday = datetime.today() - timedelta(days=1)
+            before_date = yesterday.strftime('%Y-%m-%d %H:%M:%S')
+
+            assets_info = AssetsProperties.objects.filter(id=pk).first()
+            if assets_info:
+                asset_data = []
+                recieved_ph_data = []
+                recieved_tds_data = []
+                recieved_temp_data = []
+                recieved_time_data = []
+
+                device_list = Device.objects.filter(dev_assets=assets_info.id, dev_type=1)
+                for device_data in device_list:
+                    devices_data = DeviceData.objects.filter(dvd_dev=device_data.id, dvd_created_at__range=[before_date, time_stamp]).order_by('-id')
+                    for devices_datas in devices_data:
+                        # all_ph_datas = [devices_datas.dvd_ph, 'tds': devices_datas.dvd_tds, 'temp': devices_datas.dvd_temp}
+                        all_ph_datas = devices_datas.dvd_ph
+                        recieved_ph_data.append(all_ph_datas)
+
+                        all_tds_datas = devices_datas.dvd_tds
+                        recieved_tds_data.append(all_tds_datas)
+
+                        all_temp_datas = devices_datas.dvd_temp
+                        recieved_temp_data.append(all_temp_datas)
+
+                        create_date = devices_datas.dvd_created_at
+                        all_time_datas = create_date.strftime('%H.%M')
+                        recieved_time_data.append(all_time_datas)
+
+                    total_device = len(device_list)
+                    if device_data.dev_status == 0:
+                        status_info = 'Offline'
+                    elif device_data.dev_status == 1:
+                        status_info = 'Online'
+                    else:
+                        status_info = 'Problem'
+                    device_wise_data_information = {'id': device_data.id, 'status': status_info,
+                                                    'total_device': total_device, 'name': device_data.dev_name,
+                                                    'dev_description': device_data.dev_description,
+                                                    'temp': recieved_temp_data, 'tds': recieved_tds_data,
+                                                    'time': recieved_time_data, 'ph': recieved_ph_data}
+                    asset_data.append(device_wise_data_information)
+
+                # print(recieved_ph_data)
+            # print(asset_data)
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Assets wise data list',
+                'data': asset_data
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+            return Response(response, status=status.HTTP_201_CREATED)
+
+
+class DeviceDataSet(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, pond):
+        try:
+            devices = Device.objects.filter(dev_assets_id=pond, dev_type=1)
+            result_devices = list()
+            switcher = {
+                "daily": 1,
+                "weekly": 7,
+                "monthly": 30,
+                "half-yearly": 180,
+                "yearly": 365
+            }
+            if request.GET.get('type') == 'daily':
+                result_devices = pond_wise_devices_daily_data(devices)
+            elif request.GET.get('type') == 'weekly':
+                result_devices = pond_wise_devices_weekly_data(devices,request.GET.get('type'))
+            elif request.GET.get('type') == 'monthly':
+                result_devices = pond_wise_devices_monthly_data(devices,switcher.get(request.GET.get('type')))
+            elif request.GET.get('type')=='half-yearly' or request.GET.get('type')=='yearly':
+                result_devices = pond_wise_devices_yearly_data(devices,request.GET.get('type'))
+
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Pond wise Device Data',
+                'data': result_devices
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+            return Response(response, status=status.HTTP_201_CREATED)
+
+class DeviceIndividualSensorData(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, pond):
+        try:
+            devices = Device.objects.filter(dev_assets_id=pond, dev_type=1)
+            result_devices = list()
+            switcher = {
+                "daily": 1,
+                "weekly": 7,
+                "monthly": 30,
+                "half-yearly": 180,
+                "yearly": 365
+            }
+            if request.GET.get('type') == 'daily':
+                result_devices = pond_wise_devices_sensors_daily_data(devices)
+            elif request.GET.get('type') == 'weekly':
+                result_devices = pond_wise_devices_sensors_weekly_data(devices, request.GET.get('type'))
+            elif request.GET.get('type') == 'monthly':
+                result_devices = pond_wise_devices_sensor_monthly_data(devices, switcher.get(request.GET.get('type')))
+            elif request.GET.get('type') == 'half-yearly' or request.GET.get('type') == 'yearly':
+                result_devices = pond_wise_devices_sensor_yearly_data(devices, request.GET.get('type'))
+
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Pond wise Device Data',
+                'data': result_devices
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+            return Response(response, status=status.HTTP_201_CREATED)
+
+class CameraListWithAssets(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        assets_data = []
+        user_id = request.data.get('user_id')
+        user_info = User.objects.filter(id=user_id, is_superuser=1)
+        if user_info:
+            asset_info = AssetsProperties.objects.all()
+            serializer = AssetsCameraSerializer(asset_info, many=True)
+            assets_data = serializer.data
+        else:
+            asset_info = AssetsProperties.ast_user.through.objects.filter(user_id=user_id)
+            for asset_data in asset_info:
+                camera_info = Camera.objects.filter(cam_assets_id=asset_data.assetsproperties_id).values()
+                data = {'id': asset_data.assetsproperties_id, 'ast_name': asset_data.assetsproperties.ast_name, 'camera_asset':camera_info}
+                assets_data.append(data)
+        response = {
+            'success': 'True',
+            'status code': status.HTTP_200_OK,
+            'message': 'Pond wise Camera',
+            'data': assets_data
+        }
+        return Response(response, status=status.HTTP_201_CREATED)
+
+
+class MachineControl(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        florida = timezone('Asia/Dhaka')
+        florida_time = datetime.now(florida)
+        time_stamp = florida_time.strftime('%Y-%m-%d %H:%M:%S')
+        yesterday = datetime.now(florida) + timedelta(seconds=10)
+        after_time = yesterday.strftime('%Y-%m-%d %H:%M:%S')
+        print(time_stamp, after_time)
+        device_id = request.data.get('device_id')
+        msg = request.data.get('message')
+        device_info = Device.objects.filter(id=device_id).first()
+        if device_info:
+            device_serial = device_info.dev_serial_no
+            phone_number = device_info.dev_sim_no
+
+            if msg == 'ON':
+                value = "ON"
+                publisher.client.connect(publisher.broker_address, port=publisher.port)
+                publisher.client.publish("DMA/Fish_Farm/Padma_Shrimps/"+device_serial, value)
+
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data='ON', dci_created_at__range=[time_stamp, after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="ON", dci_created_at__range=[time_stamp,after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(4)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="ON", dci_created_at__range=[time_stamp,after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                publisher.client.connect(publisher.broker_address, port=publisher.port)
+                publisher.client.publish("DMA/Fish_Farm/Padma_Shrimps/" + device_serial, value)
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="ON", dci_created_at__range=[time_stamp,after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(3)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="ON", dci_created_at__range=[time_stamp,after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    pass
+
+                url = "http://dma.com.bd:8888/send/sms"
+                message = {'number': phone_number, 'message': 'ON'}
+                r = requests.post(url, message)
+                print(r)
+                time.sleep(10)
+                response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                return Response(response)
+
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="ON", dci_created_at__range=[time_stamp,after_time]).order_by('-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is ON'
+                    }
+                    return Response(response)
+                else:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Internet Problem'
+                    }
+                    return Response(response)
+            if msg == 'OFF':
+                value = "OFF"
+                publisher.client.connect(publisher.broker_address, port=publisher.port)
+                publisher.client.publish("DMA/Fish_Farm/Padma_Shrimps/"+device_serial, value)
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF", dci_created_at__range=[time_stamp,
+                                                                                                        after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF", dci_created_at__range=[time_stamp,
+                                                                                                        after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(4)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF", dci_created_at__range=[time_stamp,
+                                                                                                        after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                publisher.client.connect(publisher.broker_address, port=publisher.port)
+                publisher.client.publish("DMA/Fish_Farm/Padma_Shrimps/" + device_serial, value)
+                time.sleep(2)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF", dci_created_at__range=[time_stamp,
+                                                                                                        after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                time.sleep(3)
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF", dci_created_at__range=[time_stamp,
+                                                                                                        after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    pass
+                url = "http://dma.com.bd:8888/send/sms"
+                message = {'number': phone_number, 'message': 'OFF'}
+                r = requests.post(url, message)
+                print(r)
+                time.sleep(10)
+                response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                return Response(response)
+
+                devConInfo = DeviceControlInfo.objects.filter(dci_dev=device_id, dci_data="OFF",
+                                                              dci_created_at__range=[time_stamp,
+                                                                                     after_time]).order_by(
+                    '-id')[:1]
+                if devConInfo:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Device is OFF'
+                    }
+                    return Response(response)
+                else:
+                    response = {
+                        'success': 'True',
+                        'status code': status.HTTP_200_OK,
+                        'message': 'Internet Problem'
+                    }
+                    return Response(response)
+        else:
+            response = {
+                'success': 'True',
+                'status code': status.HTTP_200_OK,
+                'message': 'Device Not Found'
+            }
+            return Response(response)

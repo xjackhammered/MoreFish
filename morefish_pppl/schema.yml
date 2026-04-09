@@ -1,0 +1,955 @@
+openapi: 3.0.3
+info:
+  title: Morefish DRF
+  version: 0.0.0
+paths:
+  /api/schema:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /assets/assign/to/user/:
+    post:
+      operationId: assets_assign_to_user_create
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /assets/list/:
+    get:
+      operationId: assets_list_retrieve
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /assets/send/message/:
+    post:
+      operationId: assets_send_message_create
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /assets/unassign/to/user/:
+    post:
+      operationId: assets_unassign_to_user_create
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /assets/user/asset/list:
+    get:
+      operationId: assets_user_asset_list_retrieve
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /assets/user/report/:
+    get:
+      operationId: assets_user_report_retrieve
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /assets/user/wise/list/:
+    get:
+      operationId: assets_user_wise_list_retrieve
+      tags:
+      - assets
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Login'
+          description: ''
+  /auth/logout/:
+    get:
+      operationId: auth_logout_retrieve
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/refresh_token/:
+    get:
+      operationId: auth_refresh_token_retrieve
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/registration/:
+    post:
+      operationId: auth_registration_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+  /auth/user/active/inactive/:
+    post:
+      operationId: auth_user_active_inactive_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/user/company/set/:
+    post:
+      operationId: auth_user_company_set_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/user/delete/:
+    post:
+      operationId: auth_user_delete_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/details/{id}/:
+    get:
+      operationId: auth_user_details_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: auth_user_details_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/user/existing/check/:
+    post:
+      operationId: auth_user_existing_check_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/fcm/token/update/:
+    post:
+      operationId: auth_user_fcm_token_update_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/user/forgot/password/:
+    post:
+      operationId: auth_user_forgot_password_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/list/:
+    get:
+      operationId: auth_user_list_retrieve
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /auth/user/otp/resend/:
+    post:
+      operationId: auth_user_otp_resend_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/otp/send/:
+    post:
+      operationId: auth_user_otp_send_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/otp/verify/:
+    post:
+      operationId: auth_user_otp_verify_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /auth/user/password/change/:
+    post:
+      operationId: auth_user_password_change_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePassword'
+          description: ''
+    put:
+      operationId: auth_user_password_change_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePassword'
+          description: ''
+    patch:
+      operationId: auth_user_password_change_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePassword'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePassword'
+          description: ''
+  /auth/user/reset/password/:
+    post:
+      operationId: auth_user_reset_password_create
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/MoreFish_Report/{file_name}/:
+    get:
+      operationId: devices_MoreFish_Report_retrieve
+      parameters:
+      - in: path
+        name: file_name
+        schema:
+          type: string
+        required: true
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/Morefish_Asset_report/{start_date}/{end_date}/{file_name}/:
+    get:
+      operationId: devices_Morefish_Asset_report_retrieve
+      parameters:
+      - in: path
+        name: end_date
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: file_name
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: start_date
+        schema:
+          type: string
+        required: true
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/camera/list/with/assets/:
+    post:
+      operationId: devices_camera_list_with_assets_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/complain/category/:
+    get:
+      operationId: devices_complain_category_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/complain/list/:
+    get:
+      operationId: devices_complain_list_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/complain/submit/:
+    post:
+      operationId: devices_complain_submit_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/data/graph/:
+    get:
+      operationId: devices_data_graph_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/data/history/{pond}/:
+    get:
+      operationId: devices_data_history_retrieve
+      parameters:
+      - in: path
+        name: pond
+        schema:
+          type: string
+        required: true
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/data/pond/data:
+    get:
+      operationId: devices_data_pond_data_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/data/pond/list:
+    get:
+      operationId: devices_data_pond_list_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/data/with/assets/:
+    get:
+      operationId: devices_data_with_assets_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/generate-csv/:
+    post:
+      operationId: devices_generate_csv_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/generate/devicedata/report/:
+    post:
+      operationId: devices_generate_devicedata_report_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/get-devices-for-company/:
+    get:
+      operationId: devices_get_devices_for_company_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/individula/sensor/data/{pond}/:
+    get:
+      operationId: devices_individula_sensor_data_retrieve
+      parameters:
+      - in: path
+        name: pond
+        schema:
+          type: string
+        required: true
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/list/with/data/:
+    post:
+      operationId: devices_list_with_data_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /devices/machine/control/:
+    post:
+      operationId: devices_machine_control_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/machine/list/:
+    post:
+      operationId: devices_machine_list_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/manual-data-list/:
+    get:
+      operationId: devices_manual_data_list_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/sensor/list/:
+    get:
+      operationId: devices_sensor_list_retrieve
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/user-manual-data/:
+    post:
+      operationId: devices_user_manual_data_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /devices/weather/report/:
+    post:
+      operationId: devices_weather_report_create
+      tags:
+      - devices
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/all/list/{user_id}/:
+    get:
+      operationId: notification_all_list_retrieve
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/all/pond/list/:
+    get:
+      operationId: notification_all_pond_list_retrieve
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/date_wise/list/{user_id}/:
+    get:
+      operationId: notification_date_wise_list_retrieve
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/device/wise/history/:
+    post:
+      operationId: notification_device_wise_history_create
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/history/:
+    post:
+      operationId: notification_history_create
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/today/list/{user_id}/:
+    get:
+      operationId: notification_today_list_retrieve
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /notification/yesterday/list/{user_id}/:
+    get:
+      operationId: notification_yesterday_list_retrieve
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notification
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    ChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+      required:
+      - new_password
+      - old_password
+    Login:
+      type: object
+      properties:
+        usr_email:
+          type: string
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+      required:
+      - password
+      - usr_email
+    PatchedChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+    Register:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        usr_email:
+          type: string
+          format: email
+          nullable: true
+          title: Email address
+          maxLength: 254
+        company:
+          type: integer
+          nullable: true
+        user_type:
+          allOf:
+          - $ref: '#/components/schemas/UserTypeEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+      required:
+      - password
+    UserTypeEnum:
+      enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      type: integer
+      description: |-
+        * `0` - SUPER_USER
+        * `1` - ORGANIZATION_USER
+        * `2` - ZONAL_ADMIN
+        * `3` - CONSUMER
+        * `4` - OPERATOR
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "['token', 'bearer']"

@@ -1,0 +1,776 @@
+import sys
+from datetime import datetime, timedelta
+
+import pytz
+from django.db.models import Max, Subquery
+from django.db.models.functions import TruncMonth
+from pytz import timezone
+
+from device.models import DeviceData, ProblemDevices, Sensor
+from device.serializers import DeviceDataSerializer
+from helper import unique
+
+
+def pond_wise_devices_daily_data(devices,request=None):
+    try:
+        result=list()
+        for device in devices:
+            temp_dict = {
+                'device_id': device.id,
+                'device_name': device.dev_name,
+                'ph': list(),
+                'temp': list(),
+                'tds': list(),
+                'time': list(),
+                'date_time':''
+            }
+            if device.dev_status == 0:
+                temp_dict['status'] = 'Offline'
+            elif device.dev_status == 1:
+                temp_dict['status'] = 'Online'
+            elif device.dev_status == 2:
+                temp_dict['status'] = 'Problem'
+
+            # device_data = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__gte=datetime.now()-timedelta(days=1)).order_by('dvd_created_at')
+            today=datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            device_data = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__gte=today).order_by('dvd_created_at')
+            sensor_info = Sensor.objects.filter(sen_dev_id=device.id)
+            for sensor_data in sensor_info:
+                if sensor_data.sen_name.lower() == 'ph':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        ph_problem_device = 1
+                    else:
+                        ph_problem_device = 0
+
+                elif sensor_data.sen_name.lower() == 'tds':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        tds_problem_device = 1
+                    else:
+                        tds_problem_device = 0
+                elif sensor_data.sen_name.lower() == 'temperature':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        temp_problem_device = 1
+                    else:
+                        temp_problem_device = 0
+                else:
+                    print('Nothing')
+            print(ph_problem_device, tds_problem_device, temp_problem_device)
+            for idx,data in enumerate(device_data):
+                if ph_problem_device == 0:
+                    temp_dict['ph'].append(data.dvd_ph)
+                else:
+                    temp_dict['ph'].append('0')
+                if temp_problem_device == 0:
+                    temp_dict['temp'].append(data.dvd_temp)
+                else:
+                    temp_dict['temp'].append('0')
+                if tds_problem_device == 0:
+                    temp_dict['tds'].append(data.dvd_tds)
+                else:
+                    temp_dict['tds'].append('0')
+                temp_dict['time'].append(data.dvd_created_at.strftime('%I:%M %p'))
+                if idx == len(device_data)-1:
+                    temp_dict['date_time']=data.dvd_created_at.strftime('%I:%M:%S %p , %d %b, %Y')
+
+            result.append(temp_dict)
+        return result
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+def pond_wise_devices_sensors_daily_data(devices,request=None):
+    try:
+        florida = timezone('Asia/Dhaka')
+        florida_time = datetime.now(florida)
+        time_stamp = florida_time.strftime('%Y-%m-%d %H:%M:%S')
+        yesterday = datetime.today() - timedelta(days=1)
+        before_date = yesterday.strftime('%Y-%m-%d %H:%M:%S')
+
+        ph_result = list()
+        temp_result = list()
+        tds_result = list()
+        all_device_data = []
+        sensors = ['ph', 'tds', 'temp']
+        for sensor in sensors:
+            for device in devices:
+                if sensor == 'ph':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'ph': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    device_data = DeviceData.objects.filter(dvd_dev_id=device.id,
+                                                            dvd_created_at__range=(before_date, time_stamp))
+                    for idx, data in enumerate(device_data):
+                        temp_dict['ph'].append(data.dvd_ph)
+                        temp_dict['time'].append(data.dvd_created_at.strftime('%I:%M %p'))
+                        if idx == len(device_data) - 1:
+                            temp_dict['date_time'] = data.dvd_created_at.strftime('%I:%M:%S %p , %d %b, %Y')
+
+                    ph_result.append(temp_dict)
+                    
+                if sensor == 'temp':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'temp': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    device_data = DeviceData.objects.filter(dvd_dev_id=device.id,
+                                                            dvd_created_at__range=(before_date, time_stamp))
+                    for idx, data in enumerate(device_data):
+                        temp_dict['temp'].append(data.dvd_temp)
+                        temp_dict['time'].append(data.dvd_created_at.strftime('%I:%M %p'))
+                        if idx == len(device_data) - 1:
+                            temp_dict['date_time'] = data.dvd_created_at.strftime('%I:%M:%S %p , %d %b, %Y')
+
+                    temp_result.append(temp_dict)
+                if sensor == 'tds':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'tds': list(),
+                        'time': list(),
+                        'date_time':''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    device_data = DeviceData.objects.filter(dvd_dev_id=device.id,
+                                                            dvd_created_at__range=(before_date, time_stamp))
+                    for idx, data in enumerate(device_data):
+                        temp_dict['tds'].append(data.dvd_tds)
+                        temp_dict['time'].append(data.dvd_created_at.strftime('%I:%M %p'))
+                        if idx == len(device_data) - 1:
+                            temp_dict['date_time'] = data.dvd_created_at.strftime('%I:%M:%S %p , %d %b, %Y')
+
+                    tds_result.append(temp_dict)
+                
+        sensor_data = {'PH': ph_result, 'TEMP': temp_result, 'TDS': tds_result}
+
+        return sensor_data
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+def pond_wise_devices_sensors_weekly_data(devices,type):
+    try:
+        switcher = {
+            "daily": 1,
+            "weekly": 7,
+            "monthly": 30,
+            "half-yearly": 182,
+            "yearly": 365
+        }
+
+        ph_result = list()
+        temp_result = list()
+        tds_result = list()
+        all_device_data = []
+        sensors = ['ph', 'tds', 'temp']
+        for sensor in sensors:
+            for device in devices:
+                if sensor == 'ph':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'ph': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(switcher.get(type),0,-1):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id, dvd_created_at__range=[start,end]).aggregate(Max('dvd_ph'))
+                        temp_dict['ph'].append({True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                        temp_dict['time'].append(end.strftime('%a'))
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%a, %d %b, %Y')
+
+                    ph_result.append(temp_dict)
+
+                if sensor == 'temp':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'temp': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(switcher.get(type), 0, -1):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+                            days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id, dvd_created_at__range=[start, end]).aggregate(Max('dvd_temp'))
+                        temp_dict['temp'].append(
+                            {True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                        temp_dict['time'].append(end.strftime('%a'))
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%a, %d %b, %Y')
+
+                    temp_result.append(temp_dict)
+
+                if sensor == 'tds':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'tds': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(switcher.get(type), 0, -1):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+                            days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id, dvd_created_at__range=[start, end]).aggregate(Max('dvd_tds'))
+                        temp_dict['tds'].append(
+                            {True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+                        temp_dict['time'].append(end.strftime('%a'))
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%a, %d %b, %Y')
+
+                    tds_result.append(temp_dict)
+
+            sensor_data = {'PH': ph_result, 'TEMP': temp_result, 'TDS': tds_result}
+
+        return sensor_data
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+
+def pond_wise_devices_sensor_monthly_data(devices,date_range):
+    try:
+        increment_switcher = {
+            "daily": 1,
+            "weekly": 7,
+            30: -1,
+            180: -30,
+            365: -365
+        }
+
+        ph_result = list()
+        temp_result = list()
+        tds_result = list()
+        all_device_data = []
+        sensors = ['ph', 'tds', 'temp']
+        for sensor in sensors:
+            for device in devices:
+                if sensor == 'ph':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'ph': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(date_range, 0, increment_switcher.get(date_range)):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id, dvd_created_at__range=[start, end]).aggregate(Max('dvd_ph'))
+                        temp_dict['ph'].append(
+                            {True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                        # temp_dict['temp'].append(
+                        #     {True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                        # temp_dict['tds'].append(
+                        #     {True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+
+                        if date_range == 180:
+                            temp_dict['time'].append(start.strftime('%b %d') + '-' + end.strftime('%b %d'))
+                        elif date_range == 30:
+                            temp_dict['time'].append(end.strftime('%D'))
+
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%D')
+
+                    temp_dict['time'] = unique(temp_dict['time'])
+
+                    ph_result.append(temp_dict)
+
+                if sensor == 'temp':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'temp': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(date_range, 0, increment_switcher.get(date_range)):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__range=[start,end]).aggregate(Max('dvd_temp'))
+                        temp_dict['temp'].append(
+                            {True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                        if date_range == 180:
+                            temp_dict['time'].append(start.strftime('%b %d') + '-' + end.strftime('%b %d'))
+                        elif date_range == 30:
+                            temp_dict['time'].append(end.strftime('%D'))
+
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%D')
+
+                    temp_dict['time'] = unique(temp_dict['time'])
+                    temp_result.append(temp_dict)
+
+                if sensor == 'tds':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'tds': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for x in range(date_range, 0, increment_switcher.get(date_range)):
+                        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=x)
+                        end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__range=[start,end]).aggregate(Max('dvd_tds'))
+                        temp_dict['tds'].append(
+                            {True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+
+                        if date_range == 180:
+                            temp_dict['time'].append(start.strftime('%b %d') + '-' + end.strftime('%b %d'))
+                        elif date_range == 30:
+                            temp_dict['time'].append(end.strftime('%D'))
+
+                        if x == 1:
+                            temp_dict['date_time'] = end.strftime('%D')
+
+                    temp_dict['time'] = unique(temp_dict['time'])
+                    tds_result.append(temp_dict)
+
+        sensor_data = {'PH': ph_result, 'TEMP': temp_result, 'TDS': tds_result}
+
+        return sensor_data
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+def pond_wise_devices_weekly_data(devices,type):
+    try:
+        switcher = {
+            "daily": 1,
+            "weekly": 7,
+            "monthly": 30,
+            "half-yearly": 182,
+            "yearly": 365
+        }
+        result=list()
+        print('total devices',len(devices))
+        for device in devices:
+            temp_dict = {
+                'device_id': device.id,
+                'device_name': device.dev_name,
+                'ph': list(),
+                'temp': list(),
+                'tds': list(),
+                'time': list(),
+                'date_time':''
+            }
+            if device.dev_status == 0:
+                temp_dict['status'] = 'Offline'
+            elif device.dev_status == 1:
+                temp_dict['status'] = 'Online'
+            elif device.dev_status == 2:
+                temp_dict['status'] = 'Problem'
+
+            sensor_info = Sensor.objects.filter(sen_dev_id=device.id)
+            for sensor_data in sensor_info:
+                if sensor_data.sen_name.lower() == 'ph':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        ph_problem_device = 1
+                    else:
+                        ph_problem_device = 0
+
+                elif sensor_data.sen_name.lower() == 'tds':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        tds_problem_device = 1
+                    else:
+                        tds_problem_device = 0
+                elif sensor_data.sen_name.lower() == 'temperature':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        temp_problem_device = 1
+                    else:
+                        temp_problem_device = 0
+                else:
+                    print('Nothing')
+            print(ph_problem_device, tds_problem_device, temp_problem_device)
+
+            for x in range(switcher.get(type),0,-1):
+                start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)-timedelta(days=x)
+                end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                # print(date,end)
+                # print('****')
+                # start = datetime.now() - timedelta(days=x)
+                # end = datetime.now() - timedelta(days=x-1)
+                #
+                #
+                max_values=DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__range=[start,end]).aggregate(Max('dvd_ph'),Max('dvd_temp'),Max('dvd_tds'))
+                if ph_problem_device == 0:
+                    temp_dict['ph'].append({True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                else:
+                    temp_dict['ph'].append(
+                        {True: '0', False: '0'}[max_values['dvd_ph__max'] == None])
+                if temp_problem_device == 0:
+                    temp_dict['temp'].append({True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                else:
+                    temp_dict['temp'].append(
+                        {True: '0', False: 0}[max_values['dvd_temp__max'] == None])
+                if tds_problem_device == 0:
+                    temp_dict['tds'].append({True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+                else:
+                    temp_dict['tds'].append(
+                        {True: '0', False: '0'}[max_values['dvd_tds__max'] == None])
+                temp_dict['time'].append(end.strftime('%a'))
+                if x == 1:
+                    temp_dict['date_time']= end.strftime('%a, %d %b, %Y')
+
+            result.append(temp_dict)
+        return result
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+
+def pond_wise_devices_monthly_data(devices,date_range):
+    try:
+        print('range',date_range)
+        increment_switcher = {
+            "daily": 1,
+            "weekly": 7,
+            30: -1,
+            180: -30,
+            365: -365
+        }
+        result=list()
+        for device in devices:
+            temp_dict = {
+                'device_id': device.id,
+                'device_name': device.dev_name,
+                'ph': list(),
+                'temp': list(),
+                'tds': list(),
+                'time':list(),
+                'date_time':''
+            }
+            if device.dev_status == 0:
+                temp_dict['status'] = 'Offline'
+            elif device.dev_status == 1:
+                temp_dict['status'] = 'Online'
+            elif device.dev_status == 2:
+                temp_dict['status'] = 'Problem'
+            sensor_info = Sensor.objects.filter(sen_dev_id=device.id)
+            for sensor_data in sensor_info:
+                if sensor_data.sen_name.lower() == 'ph':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        ph_problem_device = 1
+                    else:
+                        ph_problem_device = 0
+
+                elif sensor_data.sen_name.lower() == 'tds':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        tds_problem_device = 1
+                    else:
+                        tds_problem_device = 0
+                elif sensor_data.sen_name.lower() == 'temperature':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        temp_problem_device = 1
+                    else:
+                        temp_problem_device = 0
+                else:
+                    print('Nothing')
+            print(ph_problem_device, tds_problem_device, temp_problem_device)
+            for x in range(date_range,0,increment_switcher.get(date_range)):
+                start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=x)
+                end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+                # dict(DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__range=[start,end]).values('dvd_ph').aggregate(max_ph=Max('dvd_ph')))
+                max_values=DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__range=[start,end]).aggregate(Max('dvd_ph'),Max('dvd_temp'),Max('dvd_tds'))
+                if ph_problem_device == 0:
+                    temp_dict['ph'].append({True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                else:
+                    temp_dict['ph'].append(
+                        {True: '0', False: '0'}[max_values['dvd_ph__max'] == None])
+                if temp_problem_device == 0:
+                    temp_dict['temp'].append({True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                else:
+                    temp_dict['temp'].append(
+                        {True: '0', False: '0'}[max_values['dvd_temp__max'] == None])
+                if tds_problem_device == 0:
+                    temp_dict['tds'].append({True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+                else:
+                    temp_dict['tds'].append(
+                        {True: '0', False: '0'}[max_values['dvd_tds__max'] == None])
+
+                if date_range == 180:
+                    temp_dict['time'].append(start.strftime('%b %d')+'-'+end.strftime('%b %d'))
+                elif date_range == 30:
+                    temp_dict['time'].append(end.strftime('%D'))
+
+                if x == 1:
+                    temp_dict['date_time']= end.strftime('%D')
+
+            temp_dict['time']=unique(temp_dict['time'])
+            result.append(temp_dict)
+        return result
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+
+def month_names(number):
+    now = datetime.now()
+    result = [{"month":now.strftime("%m"),"year":now.strftime('%Y'),'month_year':now.strftime('%b %y')}]
+    for _ in range(0, number):
+        now = now.replace(day=1) - timedelta(days=1)
+        result.append({"month":now.strftime("%m"),"year":now.strftime('%Y'),'month_year':now.strftime('%b %y')})
+
+    return result[::-1] #returning reversed array using slicing approach
+
+
+def pond_wise_devices_yearly_data(devices,type):
+    try:
+        months = month_names({True: 12, False: 6}[type == 'yearly'])
+        result=list()
+        for device in devices:
+            temp_dict = {
+                'device_id': device.id,
+                'device_name': device.dev_name,
+                'ph': list(),
+                'temp': list(),
+                'tds': list(),
+                'time': list(),
+                'date_time':''
+            }
+            if device.dev_status == 0:
+                temp_dict['status'] = 'Offline'
+            elif device.dev_status == 1:
+                temp_dict['status'] = 'Online'
+            elif device.dev_status == 2:
+                temp_dict['status'] = 'Problem'
+            sensor_info = Sensor.objects.filter(sen_dev_id=device.id)
+            for sensor_data in sensor_info:
+                if sensor_data.sen_name.lower() == 'ph':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        ph_problem_device = 1
+                    else:
+                        ph_problem_device = 0
+
+                elif sensor_data.sen_name.lower() == 'tds':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        tds_problem_device = 1
+                    else:
+                        tds_problem_device = 0
+                elif sensor_data.sen_name.lower() == 'temperature':
+                    prb_device = ProblemDevices.objects.filter(prd_sen_id=sensor_data.id).exclude(prd_status=3)
+                    if prb_device:
+                        temp_problem_device = 1
+                    else:
+                        temp_problem_device = 0
+                else:
+                    print('Nothing')
+            print(ph_problem_device, tds_problem_device, temp_problem_device)
+            for idx,x in enumerate(months):
+                max_values=DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__month=x['month'],dvd_created_at__year=x['year']).values('dvd_ph','dvd_temp','dvd_tds','dvd_created_at').aggregate(Max('dvd_ph'),Max('dvd_temp'),Max('dvd_tds'))
+                if ph_problem_device == 0:
+                    temp_dict['ph'].append({True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                else:
+                    temp_dict['ph'].append(
+                        {True: '0', False: '0'}[max_values['dvd_ph__max'] == None])
+                if temp_problem_device == 0:
+                    temp_dict['temp'].append({True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                else:
+                    temp_dict['temp'].append(
+                        {True: '0', False: '0'}[max_values['dvd_temp__max'] == None])
+                if tds_problem_device == 0:
+                    temp_dict['tds'].append({True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+                else:
+                    temp_dict['tds'].append(
+                        {True: '0', False: '0'}[max_values['dvd_tds__max'] == None])
+                temp_dict['time'].append(x['month_year'])
+                if idx == len(months)-1:
+                    temp_dict['date_time']=x['month_year']
+            result.append(temp_dict)
+        return result
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response
+
+
+
+def pond_wise_devices_sensor_yearly_data(devices,type):
+    try:
+        months = month_names({True: 12, False: 6}[type == 'yearly'])
+
+        ph_result = list()
+        temp_result = list()
+        tds_result = list()
+        all_device_data = []
+        sensors = ['ph', 'tds', 'temp']
+        for sensor in sensors:
+            for device in devices:
+                if sensor == 'ph':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'ph': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+                    for idx, x in enumerate(months):
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__month=x['month'],dvd_created_at__year=x['year']).values('dvd_ph', 'dvd_created_at').aggregate(Max('dvd_ph'))
+                        temp_dict['ph'].append(
+                            {True: '0', False: max_values['dvd_ph__max']}[max_values['dvd_ph__max'] == None])
+                        temp_dict['time'].append(x['month_year'])
+                        if idx == len(months) - 1:
+                            temp_dict['date_time'] = x['month_year']
+
+                    ph_result.append(temp_dict)
+
+                if sensor == 'temp':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'temp': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+
+                    for idx, x in enumerate(months):
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__month=x['month'],dvd_created_at__year=x['year']).values('dvd_temp', 'dvd_created_at').aggregate(Max('dvd_temp'))
+                        temp_dict['temp'].append(
+                            {True: '0', False: max_values['dvd_temp__max']}[max_values['dvd_temp__max'] == None])
+                        temp_dict['time'].append(x['month_year'])
+                        if idx == len(months) - 1:
+                            temp_dict['date_time'] = x['month_year']
+                    temp_result.append(temp_dict)
+
+                if sensor == 'tds':
+                    temp_dict = {
+                        'device_id': device.id,
+                        'device_name': device.dev_name,
+                        'device_location': device.dev_location,
+                        'tds': list(),
+                        'time': list(),
+                        'date_time': ''
+                    }
+                    if device.dev_status == 0:
+                        temp_dict['status'] = 'Offline'
+                    elif device.dev_status == 1:
+                        temp_dict['status'] = 'Online'
+                    elif device.dev_status == 2:
+                        temp_dict['status'] = 'Problem'
+
+
+                    for idx, x in enumerate(months):
+                        max_values = DeviceData.objects.select_related('dvd_dev').filter(dvd_dev=device.id,dvd_created_at__month=x['month'],dvd_created_at__year=x['year']).values('dvd_tds', 'dvd_created_at').aggregate(Max('dvd_tds'))
+                        temp_dict['tds'].append(
+                            {True: '0', False: max_values['dvd_tds__max']}[max_values['dvd_tds__max'] == None])
+                        temp_dict['time'].append(x['month_year'])
+                        if idx == len(months) - 1:
+                            temp_dict['date_time'] = x['month_year']
+                    tds_result.append(temp_dict)
+
+            sensor_data = {'PH': ph_result, 'TEMP': temp_result, 'TDS': tds_result}
+
+        return sensor_data
+    except Exception as e:
+        response = 'on line {}'.format(sys.exc_info()[-1].tb_lineno), str(e)
+        return response

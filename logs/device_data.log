@@ -1,0 +1,63 @@
+[2026-04-06 11:05:34,883] [WARNING] Invalid datetime format: 2026-04-06 19:05:34
+[2026-04-06 11:05:34,899] [DEBUG] Sensor: pH | pid=1 | addr=1 | scaled_val=7.66
+[2026-04-06 11:05:34,915] [INFO] ✅ DeviceDataHistory saved for sensor: pH
+[2026-04-06 11:05:34,938] [INFO] ✅ Created DeviceData for sensor: pH
+[2026-04-06 11:05:34,946] [WARNING] Invalid datetime format: 2026-04-06 19:05:34
+[2026-04-06 11:05:34,947] [DEBUG] Sensor: DO | pid=2 | addr=0 | scaled_val=3.93
+[2026-04-06 11:05:34,959] [INFO] ✅ DeviceDataHistory saved for sensor: DO
+[2026-04-06 11:05:34,978] [INFO] ✅ Created DeviceData for sensor: DO
+[2026-04-06 11:05:34,980] [INFO] SensorConfiguration not found: pid=1, address=0
+[2026-04-06 11:05:34,981] [INFO] SensorConfiguration not found: pid=4, address=0
+[2026-04-06 11:05:34,982] [WARNING] Invalid datetime format: 2026-04-06 19:05:34
+[2026-04-06 11:05:34,983] [DEBUG] Sensor: NH3 | pid=5 | addr=255 | scaled_val=0.58
+[2026-04-06 11:05:34,996] [INFO] ✅ DeviceDataHistory saved for sensor: NH3
+[2026-04-06 11:05:35,018] [INFO] ✅ Created DeviceData for sensor: NH3
+[2026-04-06 11:05:35,023] [WARNING] Invalid datetime format: 2026-04-06 19:05:34
+[2026-04-06 11:05:35,027] [DEBUG] Sensor: Temperature | pid=2 | addr=1 | scaled_val=26.39
+[2026-04-06 11:05:35,041] [INFO] ✅ DeviceDataHistory saved for sensor: Temperature
+[2026-04-06 11:05:35,068] [INFO] ✅ Created DeviceData for sensor: Temperature
+[2026-04-06 11:05:35,070] [INFO] NH3 Calc Inputs — TAN: 0.58, pH: 7.66, Temp: 26.39
+[2026-04-06 11:05:35,071] [INFO] ✅ NH3 Calculated: 0.0161
+[2026-04-06 11:05:35,127] [INFO] ✅ NH3 data saved.
+[2026-04-07 04:40:18,343] [WARNING] Invalid datetime format: 2026-04-07 12:40:16
+[2026-04-07 04:40:18,364] [DEBUG] Sensor: pH | pid=1 | addr=1 | scaled_val=7.66
+[2026-04-07 04:40:18,380] [INFO] ✅ DeviceDataHistory saved for sensor: pH
+[2026-04-07 04:40:18,405] [INFO] ✅ Updated DeviceData for sensor: pH
+[2026-04-07 04:40:18,416] [WARNING] Invalid datetime format: 2026-04-07 12:40:16
+[2026-04-07 04:40:18,418] [DEBUG] Sensor: DO | pid=2 | addr=0 | scaled_val=5.41
+[2026-04-07 04:40:18,432] [INFO] ✅ DeviceDataHistory saved for sensor: DO
+[2026-04-07 04:40:18,449] [INFO] ✅ Updated DeviceData for sensor: DO
+[2026-04-07 04:40:18,452] [INFO] SensorConfiguration not found: pid=1, address=0
+[2026-04-07 04:40:18,454] [INFO] SensorConfiguration not found: pid=4, address=0
+[2026-04-07 04:40:18,455] [WARNING] Invalid datetime format: 2026-04-07 12:40:16
+[2026-04-07 04:40:18,457] [DEBUG] Sensor: NH3 | pid=5 | addr=255 | scaled_val=0.01
+[2026-04-07 04:40:18,470] [INFO] ✅ DeviceDataHistory saved for sensor: NH3
+[2026-04-07 04:40:18,492] [INFO] ✅ Updated DeviceData for sensor: NH3
+[2026-04-07 04:40:18,494] [WARNING] Invalid datetime format: 2026-04-07 12:40:16
+[2026-04-07 04:40:18,495] [DEBUG] Sensor: Temperature | pid=2 | addr=1 | scaled_val=28.98
+[2026-04-07 04:40:18,513] [INFO] ✅ DeviceDataHistory saved for sensor: Temperature
+[2026-04-07 04:40:18,532] [INFO] ✅ Updated DeviceData for sensor: Temperature
+[2026-04-07 04:40:18,533] [INFO] NH3 Calc Inputs — TAN: 0.01, pH: 7.66, Temp: 28.98
+[2026-04-07 04:40:18,533] [INFO] ✅ NH3 Calculated: 0.0003
+[2026-04-07 04:40:18,570] [INFO] ✅ NH3 data saved.
+[2026-04-07 04:57:30,199] [WARNING] Invalid datetime format: 2026-04-07 12:57:28
+[2026-04-07 04:57:30,200] [DEBUG] Sensor: pH | pid=1 | addr=1 | scaled_val=7.67
+[2026-04-07 04:57:30,216] [INFO] ✅ DeviceDataHistory saved for sensor: pH
+[2026-04-07 04:57:30,240] [INFO] ✅ Updated DeviceData for sensor: pH
+[2026-04-07 04:57:30,242] [WARNING] Invalid datetime format: 2026-04-07 12:57:28
+[2026-04-07 04:57:30,243] [DEBUG] Sensor: DO | pid=2 | addr=0 | scaled_val=5.61
+[2026-04-07 04:57:30,257] [INFO] ✅ DeviceDataHistory saved for sensor: DO
+[2026-04-07 04:57:30,273] [INFO] ✅ Updated DeviceData for sensor: DO
+[2026-04-07 04:57:30,276] [INFO] SensorConfiguration not found: pid=1, address=0
+[2026-04-07 04:57:30,277] [INFO] SensorConfiguration not found: pid=4, address=0
+[2026-04-07 04:57:30,278] [WARNING] Invalid datetime format: 2026-04-07 12:57:28
+[2026-04-07 04:57:30,280] [DEBUG] Sensor: NH3 | pid=5 | addr=255 | scaled_val=0.0
+[2026-04-07 04:57:30,294] [INFO] ✅ DeviceDataHistory saved for sensor: NH3
+[2026-04-07 04:57:30,313] [INFO] ✅ Updated DeviceData for sensor: NH3
+[2026-04-07 04:57:30,315] [WARNING] Invalid datetime format: 2026-04-07 12:57:28
+[2026-04-07 04:57:30,316] [DEBUG] Sensor: Temperature | pid=2 | addr=1 | scaled_val=29.57
+[2026-04-07 04:57:30,335] [INFO] ✅ DeviceDataHistory saved for sensor: Temperature
+[2026-04-07 04:57:30,353] [INFO] ✅ Updated DeviceData for sensor: Temperature
+[2026-04-07 04:57:30,356] [INFO] NH3 Calc Inputs — TAN: 0.0, pH: 7.67, Temp: 29.57
+[2026-04-07 04:57:30,356] [INFO] ✅ NH3 Calculated: 0.0
+[2026-04-07 04:57:30,400] [INFO] ✅ NH3 data saved.
