@@ -4,3 +4,15 @@ morefish_pppl/morefish_pppl/__pycache__/settings.cpython-312.pyc
 *.pyc
 *.pyc
 *.png
+morefish_pppl/notification/server_key.json
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+static_root/
+media/
+server_key.json.venv
