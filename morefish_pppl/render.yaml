@@ -39,9 +39,9 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com,localhost,127.0.0.1"
       - key: EMAIL_HOST_USER
-        sync: false
+        value: ""
       - key: EMAIL_HOST_PASSWORD
-        sync: false
+        value: ""
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /etc/secrets/server_key.json
 
@@ -60,7 +60,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: morefish-db
@@ -97,7 +97,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: morefish-db
@@ -132,7 +132,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: morefish-db
@@ -162,7 +162,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: morefish-db
