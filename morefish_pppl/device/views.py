@@ -1531,3 +1531,56 @@ class AeratorCommandAPI(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+class FishDiseaseDetectionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        image = request.FILES.get('file')
+        if not image:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'message': 'No image file provided. Send image with field name "file".'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            response = requests.post(
+                'https://allfahad-fish-disease-detector-dma.hf.space/predict',
+                files={'file': (image.name, image.read(), image.content_type)}
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'message': 'Disease detection successful',
+                'data': {
+                    'disease': data.get('disease'),
+                    'confidence': data.get('confidence'),
+                    'confidence_percent': f"{round(data.get('confidence', 0) * 100, 2)}%"
+                }
+            }, status=status.HTTP_200_OK)
+
+        except requests.exceptions.ConnectionError:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_503_SERVICE_UNAVAILABLE,
+                'message': 'Disease detection service is currently unavailable.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        except requests.exceptions.Timeout:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_504_GATEWAY_TIMEOUT,
+                'message': 'Disease detection service timed out. Please try again.'
+            }, status=status.HTTP_504_GATEWAY_TIMEOUT)
+
+        except Exception as e:
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'message': f'Error during disease detection: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

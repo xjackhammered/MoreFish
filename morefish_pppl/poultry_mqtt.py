@@ -1,16 +1,3 @@
-"""
-poultry_mqtt.py
-MQTT listener for the Poultry Care module.
-Connects to broker.hivemq.com, subscribes to PoultryCare/DTU,
-parses incoming JSON payloads, applies the per-sensor multiplier,
-and saves to the database.
-
-After each save it fires a Celery task to check sensor thresholds
-and send push notifications if values are out of range.
-
-Run as a standalone process:
-    python poultry_mqtt.py
-"""
 import os
 import json
 import time
@@ -19,6 +6,7 @@ from datetime import datetime
 
 import django
 import paho.mqtt.client as mqtt
+from django.db import close_old_connections
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "morefish_pppl.settings")
 django.setup()
@@ -53,7 +41,6 @@ def _get_sensor_config_map(device):
     return mapping
 
 
-# ─── MQTT Callbacks ───────────────────────────────────────────────────────────
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         logger.info("Connected to MQTT broker")
@@ -69,6 +56,7 @@ def on_disconnect(client, userdata, rc):
 
 
 def on_message(client, userdata, msg):
+    close_old_connections()
     payload_str = msg.payload.decode()
     logger.info(f"RAW MESSAGE: {payload_str[:200]}...")
     logger.info(f"Message received on {msg.topic}")
@@ -100,14 +88,12 @@ def on_message(client, userdata, msg):
             logger.warning(f"Unknown device: {client_id}")
             return
 
-        # ── Save raw payload (audit trail) ────────────────────────────────────
         RawMQTTData.objects.create(
             device=device,
             topic=msg.topic,
             payload=data
         )
 
-        # ── Parse timestamp (naive, local time Asia/Dhaka) ────────────────────
         ts = None
         if timestamp:
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S"):
@@ -120,16 +106,14 @@ def on_message(client, userdata, msg):
             logger.warning(f"Invalid timestamp: {timestamp} — using current time")
             ts = datetime.now()          # naive datetime
 
-        # ── Load configured sensors for this device ───────────────────────────
         sensor_map = _get_sensor_config_map(device)
 
         if not sensor_map:
             logger.warning(f"No sensor configs found for device {client_id}")
             return
 
-        # ── Build sensor fields, apply multiplier, skip unconfigured sensors ──
         sensor_fields = {}
-        processed_sensors = []  # keep track for threshold checks
+        processed_sensors = []  
 
         for payload_key, raw_value in sensor_data.items():
             if payload_key not in sensor_map:
@@ -152,7 +136,6 @@ def on_message(client, userdata, msg):
             logger.warning(f"No configured sensor data to save for device {client_id}")
             return
 
-        # ── Save to SensorReading (append-only history table) ─────────────────
         valid_fields = {}
         for field_name, value in sensor_fields.items():
             if hasattr(SensorReading, field_name):
@@ -164,7 +147,6 @@ def on_message(client, userdata, msg):
             **valid_fields
         )
 
-        # ── Update PoultryDeviceData (latest-per-sensor snapshot table) ───────
         for sensor_name, value in sensor_fields.items():
             try:
                 sensor_obj = Sensor.objects.get(name=sensor_name)
@@ -179,14 +161,12 @@ def on_message(client, userdata, msg):
             except Sensor.DoesNotExist:
                 logger.warning(f"Sensor '{sensor_name}' not found in DB – skipping snapshot")
 
-        # ── Update Device.latest_reading_data (JSON snapshot for quick dash) ──
         device.latest_reading_timestamp = ts
         device.latest_reading_data = sensor_fields
         device.save(update_fields=["latest_reading_timestamp", "latest_reading_data"])
 
         logger.info(f"Data saved for device {client_id}")
 
-        # ── Fire threshold check tasks for each processed sensor ──────────────
         logger.info(f"Processed sensors count: {len(processed_sensors)}")
         from poultry_care.tasks import check_poultry_thresholds
         for sensor_name, value, sensor_obj in processed_sensors:
@@ -208,7 +188,6 @@ def on_message(client, userdata, msg):
         logger.exception(f"Error processing MQTT message: {e}")
 
 
-# ─── Client ───────────────────────────────────────────────────────────────────
 def create_client():
     client = mqtt.Client()
     client.on_connect = on_connect

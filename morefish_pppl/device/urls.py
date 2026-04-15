@@ -4,7 +4,7 @@ from .views import ComplainCategoryView, ComplainListView, ComplainSubmitView, D
     DeviceIndividualSensorData, DownloadCSVView, DownloadExcelAssetDataView, GenerateAssetDataExcel, GenerateCSVAPIView, \
     GetDevicesForCompanyView, PondData, PondList, SensorList, UserManualDataAPIView, UserManualDataListAPIView, \
     WeatherReportView, DataHistoryPondWise, AssetsListWithData, DeviceListWithData, CameraListWithAssets, \
-    MachineControl, MachineList, AeratorCommandAPI
+    MachineControl, MachineList, AeratorCommandAPI, FishDiseaseDetectionView
 
 urlpatterns = [
     path('data/pond/list',PondList.as_view()),
@@ -35,5 +35,10 @@ urlpatterns = [
 
     # aerator control
     path('aerators/command/', AeratorCommandAPI.as_view(), name='aerator-command'),
+
+    #for fish disease
+    path('fish-disease/detect/', FishDiseaseDetectionView.as_view(), name='fish-disease-detect'),
 ]    
+
+    
 

@@ -244,3 +244,10 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = "fishfarmdma@gmail.com"
 EMAIL_HOST_PASSWORD = "plcagdpvzxkxetlo"
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://kilt-absolve-cornea.ngrok-free.dev",
+]
